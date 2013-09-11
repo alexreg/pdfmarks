@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+
+get_link_target () {
+    target="$1"
+    while next_target="$(readlink -n "$target")" ; do
+        target="$(dirname "$target")/$next_target"
+    done
+    LINK_TARGET="$target"
+}
+
+PROGRAM_NAME=$(basename $0)
+SCRIPT_PATH=$(get_link_target "${BASH_SOURCE[0]}")
+SCRIPT_NAME=$(basename "$SCRIPT_PATH")
+SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
+
+cp_array() {
+	local _a="$1[i]" _b="$2[i]" _na i
+	eval "_na=\${!$1[@]} ; $2=()"
+	for i in $_na ; do
+		eval "$2[i]=\${!_a}"
+	done
+}
+
+cmp_array() {
+	local _a="$1[i]" _b="$2[i]" _na _nb i
+	eval _na=\${!$1[@]} _nb=\${!$2[@]}
+	for i in $_na $_nb ; do
+		[[ "${!_a}" = "${!_b}" ]] || return 1
+	done
+}
+
+check_basename() {
+	if [[ -z "$basename" ]] ; then
+		failwith "no basename given"
+	fi
+}
+
+# Exists immediately, writing an error message.
+# $1: error message
+# $2 ?: exit code
+failwith() {
+    echo "$PROGRAM_NAME: $1" >&2
+    exit ${2:-1}
+}
+
+on_exit() {
+	local exit_status=${1:-$?}
+	if (( $exit_status != 0 )) ; then
+		failwith "fatal error occurred"
+	else
+		exit 0
+	fi
+}
+
+trap_exit_on() {
+	trap on_exit EXIT
+}
+
+trap_exit_off() {
+	trap - EXIT
+}
+
+# Appends a command to a trap.
+# $1: command to run on trap
+# $2...: names of traps to modify
+trap_add() {
+    trap_add_cmd=$1; shift || echo "${FUNCNAME} usage error" >& 2
+    for trap_add_name in "$@"; do
+        trap -- "$(
+            extract_trap_cmd() { printf '%s\n' "$3"; }
+            printf '%s\n' "${trap_add_cmd}"
+            eval "extract_trap_cmd $(trap -p "${trap_add_name}")"
+        )" "${trap_add_name}" \
+            || failwith "unable to add to trap ${trap_add_name}"
+    done
+}
+declare -f -t trap_add

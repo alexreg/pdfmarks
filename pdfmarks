@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+source "common"
+
+show_help() {
+	echo "usage: $PROGRAM_NAME -h | [ -r p ] [ -a p ] [ -R p ] [ -A p ] file"
+    echo "  -r      physical page number at which to start Roman numbering (default = 0)"
+    echo "  -a      physical page number at which to start Arabic numbering (default = 1)"
+    echo "  -R      logical page number at which to start Roman numbering (default = 1)"
+    echo "  -A      logical page number at which to start Arabic numbering (default = 1)"
+	exit 0
+}
+
+pages_roman_start_physical=0
+pages_arabic_start_physical=1
+pages_roman_start_logical=1
+pages_arabic_start_logical=1
+
+OPTIND=1
+while getopts "h?r:a:R:A:" opt; do
+	case "$opt" in
+		h|\?)
+			show_help
+			exit 0
+			;;
+        r)
+            pages_roman_start_physical="$OPTARG"
+            ;;
+        a)
+            pages_arabic_start_physical="$OPTARG"
+            ;;
+        R)
+            pages_roman_start_logical="$OPTARG"
+            ;;
+        A)
+            pages_arabic_start_logical="$OPTARG"
+            ;;
+	esac
+done
+shift $((OPTIND-1))
+[ "$1" = "--" ] && shift
+
+input_file=$1
+if [[ -z "$input_file" ]] ; then
+    failwith "file must be specified"
+    exit 10
+fi
+
+output_file=$(mktemp /tmp/$(basename input_file).XXXX)
+
+if [[ -z $pages_roman_start_physical || -z $pages_arabic_start_physical || -z $pages_roman_start_logical || -z $pages_arabic_start_logical ]] ; then
+    failwith "one of options -r, -a, -R, -A must be specified"
+    exit 11
+fi
+
+trap_exit_on
+
+gs -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -sOutputFile="$output_file" -dRomanStartPhysical="$pages_roman_start_physical" -dArabicStartPhysical="$pages_arabic_start_physical" -dRomanStartLogical="$pages_roman_start_logical" -dArabicStartLogical="$pages_arabic_start_logical" "$input_file" "pdfmarks.ps" &&
+mv -f "$output_file" "$input_file" &&
+echo "Successfully renumbered pages."
