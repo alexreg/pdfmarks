@@ -3,58 +3,84 @@
 source "common"
 
 show_help() {
-	echo "usage: $PROGRAM_NAME -h | [ -r p ] [ -a p ] [ -R p ] [ -A p ] file"
-    echo "  -r      physical page number at which to start Roman numbering (default = 0)"
-    echo "  -a      physical page number at which to start Arabic numbering (default = 1)"
-    echo "  -R      logical page number at which to start Roman numbering (default = 1)"
-    echo "  -A      logical page number at which to start Arabic numbering (default = 1)"
-	exit 0
+    printf "usage: $PROGRAM_NAME ( -h | [-v] [-s=separator] file [command] )\n"
+    printf "    -h\tshows the help screen\n"
+    printf "    -v\tprints verbose output\n"
+    printf "    -s\tseparates arguments of \`command\` using the characters of \`separator\` instead of space\n"
+    printf "\n"
+    printf "Renumbers the pages of \`file\` according to \`command\`, where \`command\` is of the format:\n"
+    printf "    [ physical_page logical_page [page_style] [page_label], ]*\n"
+    printf "where\n"
+    printf "    \`physical_page\` is a physical page number;\n"
+    printf "    \`logical_page\` is a logical page number;\n"
+    printf "    \`page_style\` [optional] is one of 'D' (decimal Arabic), 'R' (upper-case Roman), 'r' (lower-case Roman), 'A' (upper-case letters), 'a' (lower-case letters), or '-' for unspecified;\n"
+    printf "    \`page_label\` [optional] is a label for prefixing page numbers.\n"
+    printf "Arguments in \`command\` may alternatively be delimited by the '#' charater, rather than by spaces (the ' ' character).\n"
+    printf "If \`command\` is not given as an argument, then it is read from standard input.\n"
 }
 
-pages_roman_start_physical=0
-pages_arabic_start_physical=1
-pages_roman_start_logical=1
-pages_arabic_start_logical=1
-
 OPTIND=1
-while getopts "h?r:a:R:A:" opt; do
+verbose=0
+command_arg_separator=' '
+while getopts "h?vs=" opt; do
 	case "$opt" in
 		h|\?)
 			show_help
 			exit 0
 			;;
-        r)
-            pages_roman_start_physical="$OPTARG"
+        v)
+            verbose=1
             ;;
-        a)
-            pages_arabic_start_physical="$OPTARG"
-            ;;
-        R)
-            pages_roman_start_logical="$OPTARG"
-            ;;
-        A)
-            pages_arabic_start_logical="$OPTARG"
+        s)
+            command_arg_separator="$OPTARG"
             ;;
 	esac
 done
-shift $((OPTIND-1))
-[ "$1" = "--" ] && shift
+shift $((OPTIND - 1))
+[[ "$1" == "--" ]] && shift
 
-input_file=$1
+input_file="$1"
+numbering_command="$2"
 if [[ -z "$input_file" ]] ; then
     failwith "file must be specified"
-    exit 10
-fi
-
-output_file=$(mktemp /tmp/$(basename input_file).XXXX)
-
-if [[ -z $pages_roman_start_physical || -z $pages_arabic_start_physical || -z $pages_roman_start_logical || -z $pages_arabic_start_logical ]] ; then
-    failwith "one of options -r, -a, -R, -A must be specified"
     exit 11
+fi
+if [[ -z "$numbering_command" ]] ; then
+    read -r numbering_command
+    if [[ -z "$numbering_command" ]] ; then
+        failwith "command must be specified"
+        exit 10
+    fi
 fi
 
 trap_exit_on
 
-gs -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -sOutputFile="$output_file" -dRomanStartPhysical="$pages_roman_start_physical" -dArabicStartPhysical="$pages_arabic_start_physical" -dRomanStartLogical="$pages_roman_start_logical" -dArabicStartLogical="$pages_arabic_start_logical" "$input_file" "pdfmarks.ps" &&
+output_file="$(mktemp "/tmp/$(basename "$input_file").XXXX")"
+
+numbering_tokens=""
+delim=','
+while IFS="$command_arg_separator" read -r -d "$delim" p1 p2 p3 p4 ; do
+    logical_page="$p1"
+    physical_page="$p2"
+    page_style="null"
+    page_label="null"
+    if [[ -n "$p3" && "$p3" != "-" ]] ; then
+        page_style="/$p3"
+    fi
+    if [[ -n "$p4" ]] ; then
+        page_label="($p4)"
+    fi
+    numbering_tokens+=" [ $logical_page $physical_page $page_style $page_label ]"
+done <<< "$numbering_command$delim"
+
+(( $verbose )) && echo "Writing output to temporary file \`$output_file\`..."
+gs_args=""
+gs $gs_args -dNOPAUSE -sDEVICE=pdfwrite -sOutputFile="$output_file" "$input_file" "pdfmarks.ps" << EOF
+/Numberings [$numbering_tokens] def
+do_renumbering
+EOF
+exit_code=$? ; echo ; (( $exit_code == 0 )) || exit $exit_code
+
+(( $verbose )) && echo "Moving temporary file \`$output_file\` back to \`$input_file\`."
 mv -f "$output_file" "$input_file" &&
-echo "Successfully renumbered pages."
+echo "Successfully renumbered pages of \`$input_file\`."

@@ -19,29 +19,17 @@
 % [{pl} <</Nums [ 0 << /S /r >> 16 << /S /D >> ]>> /PUT pdfmark
 % [{Catalog} <</PageLabels {pl}>> /PUT pdfmark
 
-/set_default_param
-% stack: <param name> <param default>
-{
-  exch
-  systemdict 1 index known
-  {
-    systemdict 1 index get
-    userdict 3 1 roll put
-    pop
-  }
-  {
-    exch userdict 3 1 roll put
-  } ifelse
-} bind def
-
-/RomanStartPhysical 0 set_default_param
-/ArabicStartPhysical 1 set_default_param
-/RomanStartLogical 1 set_default_param
-/ArabicStartLogical 1 set_default_param
-
-[/_objdef {pl} /type /dict /OBJ pdfmark
-[{pl} <</Nums [ 0 << /S /R >>
-                RomanStartPhysical 1 sub << /S /r /St RomanStartLogical 1 sub >>
-                ArabicStartPhysical 1 sub << /S /D /St ArabicStartLogical >>
-                ]>> /PUT pdfmark
-[{Catalog} <</PageLabels {pl}>> /PUT pdfmark
+/do_renumbering {
+    [/_objdef {pl} /type /dict /OBJ pdfmark
+    [{pl} <</Nums [
+        Numberings {
+            /params exch def
+            /physical_page params 0 get def
+            /logical_page params 1 get def
+            /page_style params 2 get def
+            /page_label params 3 get def
+            physical_page 1 sub << page_style null ne { /S page_style } if page_label null ne { /P page_label } if /St logical_page >>
+        } forall
+        ]>> /PUT pdfmark
+    [{Catalog} <</PageLabels {pl}>> /PUT pdfmark
+} def
