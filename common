@@ -1,20 +1,13 @@
 #!/usr/bin/env bash
 
-get_link_target() {
-    target="$1"
-    while next_target="$(readlink -n "$target")" ; do
-        target="$(dirname "$target")/$next_target"
+in_array() { 
+    local value="$1" ; shift
+    for e in "$@" ; do
+        if [[ "$value" == "$e" ]] ; then
+            return 0
+        fi
     done
-    LINK_TARGET="$target"
-}
-
-PROGRAM_NAME="$(basename -- "$0")"
-SCRIPT_PATH="$(get_link_target "${BASH_SOURCE[0]}")"
-SCRIPT_NAME="$(basename "$SCRIPT_PATH")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-
-init_func_command() {
-    PROGRAM_NAME="${FUNCNAME[1]}"
+    return 1
 }
 
 cp_array() {
@@ -33,10 +26,27 @@ cmp_array() {
 	done
 }
 
+join_array() { 
+    local delim="$1" ; shift
+    result="$1" ; shift
+    for e in "$@" ; do
+        result+="$delim$e"
+    done
+    echo -n "$result"
+}
+
 check_basename() {
 	if [[ -z "$basename" ]] ; then
 		failwith "no basename given" 1
 	fi
+}
+
+get_link_target() {
+    target="$1"
+    while next_target="$(readlink -n "$target")" ; do
+        target="$(dirname "$target")/$next_target"
+    done
+    LINK_TARGET="$target"
 }
 
 # Exists immediately, writing an error message.
@@ -52,6 +62,7 @@ on_exit() {
 	local exit_status=${1:-$?}
 	if (( $exit_status != 0 )) ; then
 		failwith "fatal error occurred"
+        exit $FATAL_ERROR_CODE
 	else
 		return 0
 	fi
@@ -80,3 +91,14 @@ trap_add() {
     done
 }
 declare -f -t trap_add
+
+PROGRAM_NAME="$(basename -- "$0")"
+SCRIPT_PATH="$(get_link_target "${BASH_SOURCE[0]}")"
+SCRIPT_NAME="$(basename "$SCRIPT_PATH")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+
+FATAL_ERROR_CODE=${FATAL_ERROR_CODE:-1}
+
+init_func_command() {
+    PROGRAM_NAME="${FUNCNAME[1]}"
+}

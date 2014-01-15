@@ -3,24 +3,24 @@
 source "common"
 
 show_help() {
-    printf "usage: $PROGRAM_NAME ( -h | [-v] [-s=separator] file [command] )\n"
-    printf "    -h\tshows the help screen\n"
-    printf "    -v\tprints verbose output\n"
-    printf "    -s\tseparates arguments of \`command\` using the characters of \`separator\` instead of space\n"
+	printf "usage: $PROGRAM_NAME ( -h | [-v] [-s=SEP] FILE [COMMAND] )\n"
+    printf "    -h\t\tshow this help screen\n"
+    printf "    -v\t\tincrease verbosity\n"
+    printf "    -s=SEP\tseparate arguments of COMMAND using the characters of SEP instead of space\n"
     printf "\n"
-    printf "Renumbers the pages of \`file\` according to \`command\`, where \`command\` is of the format:\n"
-    printf "    [ physical_page logical_page [page_style] [page_label], ]*\n"
+    printf "Renumbers the pages of FILE according to COMMAND, where COMMAND is of the format:\n"
+    printf "    [ <physical_page> <logical_page> [<page_style>] [<page_label>], ]*\n"
     printf "where\n"
-    printf "    \`physical_page\` is a physical page number;\n"
-    printf "    \`logical_page\` is a logical page number;\n"
-    printf "    \`page_style\` [optional] is one of 'D' (decimal Arabic), 'R' (upper-case Roman), 'r' (lower-case Roman), 'A' (upper-case letters), 'a' (lower-case letters), or '-' for unspecified;\n"
-    printf "    \`page_label\` [optional] is a label for prefixing page numbers.\n"
-    printf "Arguments in \`command\` may alternatively be delimited by the '#' charater, rather than by spaces (the ' ' character).\n"
-    printf "If \`command\` is not given as an argument, then it is read from standard input.\n"
+    printf "    <physical_page> is a physical page number;\n"
+    printf "    <logical_page> is a logical page number;\n"
+    printf "    <page_style> [optional] is one of 'D' (decimal Arabic), 'R' (upper-case Roman), 'r' (lower-case Roman), 'A' (upper-case letters), 'a' (lower-case letters), or '-' for unspecified;\n"
+    printf "    <page_label> [optional] is a label for prefixing page numbers.\n"
+    printf "Arguments in COMMAND may alternatively be delimited by the '#' charater, rather than by spaces (the ' ' character).\n"
+    printf "If the COMMAND argument is not specified, then it is read as a single line from standard input.\n"
 }
 
 OPTIND=1
-verbose=0
+verbosity=0
 command_arg_separator=' '
 while getopts "h?vs=" opt; do
 	case "$opt" in
@@ -29,7 +29,7 @@ while getopts "h?vs=" opt; do
 			exit 0
 			;;
         v)
-            verbose=1
+            ((verbosity+=1))
             ;;
         s)
             command_arg_separator="$OPTARG"
@@ -42,14 +42,14 @@ shift $((OPTIND - 1))
 input_file="$1"
 numbering_command="$2"
 if [[ -z "$input_file" ]] ; then
-    failwith "file must be specified"
-    exit 11
+    failwith "FILE must be specified"
+    exit 10
 fi
 if [[ -z "$numbering_command" ]] ; then
     read -r numbering_command
     if [[ -z "$numbering_command" ]] ; then
-        failwith "command must be specified"
-        exit 10
+        failwith "COMMAND must be specified"
+        exit 11
     fi
 fi
 
@@ -73,7 +73,7 @@ while IFS="$command_arg_separator" read -r -d "$delim" p1 p2 p3 p4 ; do
     numbering_tokens+=" [ $logical_page $physical_page $page_style $page_label ]"
 done <<< "$numbering_command$delim"
 
-(( $verbose )) && echo "Writing output to temporary file \`$output_file\`..."
+(( $verbosity )) && echo "Writing output to temporary file \`$output_file\`..."
 gs_args=""
 gs $gs_args -dNOPAUSE -sDEVICE=pdfwrite -sOutputFile="$output_file" "$input_file" "pdfmarks.ps" << EOF
 /Numberings [$numbering_tokens] def
@@ -81,6 +81,6 @@ do_renumbering
 EOF
 exit_code=$? ; echo ; (( $exit_code == 0 )) || exit $exit_code
 
-(( $verbose )) && echo "Moving temporary file \`$output_file\` back to \`$input_file\`."
+(( $verbosity )) && echo "Moving temporary file \`$output_file\` back to \`$input_file\`."
 mv -f "$output_file" "$input_file" &&
 echo "Successfully renumbered pages of \`$input_file\`."
