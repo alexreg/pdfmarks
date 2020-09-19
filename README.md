@@ -6,5 +6,5 @@ Page markings are the logical page numberings that conventional PDF viewers show
 
 ## Dependencies
 
-* *Bash*, >= 3.2
-* *Ghostscript*, >= 9.0
+* *Bash* >= v3.2
+* *Ghostscript* >= v9.0
