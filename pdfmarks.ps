@@ -1,11 +1,11 @@
 % Reference:
 % Type name (Optional) The type of PDF object that this dictionary describes; if present, must be PageLabel for a page label dictionary.
 % S name (Optional) The numbering style to be used for the numeric portion of each page label:
-%       D Decimal Arabic numerals
-%       R Uppercase Roman numerals
-%       r Lowercase Roman numerals
-%       A Uppercase letters (A to Z for the first 26 pages, AA to ZZ for the next 26, etc.)
-%       a Lowercase letters (a to z for the first 26 pages, aa to zz for the next 26, etc.)
+%		D Decimal Arabic numerals
+%		R Uppercase Roman numerals
+%		r Lowercase Roman numerals
+%		A Uppercase letters (A to Z for the first 26 pages, AA to ZZ for the next 26, etc.)
+%		a Lowercase letters (a to z for the first 26 pages, aa to zz for the next 26, etc.)
 % P string (Optional) The label prefix for page labels in this range.
 % St integer (Optional) The value of the numeric portion for the first page label in the range. Subsequent pages will be numbered sequentially from this value, which must be greater than or equal to 1. Default value: 1.
 
@@ -20,16 +20,16 @@
 % [{Catalog} <</PageLabels {pl}>> /PUT pdfmark
 
 /do_renumbering {
-    [/_objdef {pl} /type /dict /OBJ pdfmark
-    [{pl} <</Nums [
-        Numberings {
-            /params exch def
-            /physical_page params 0 get def
-            /logical_page params 1 get def
-            /page_style params 2 get def
-            /page_label params 3 get def
-            physical_page 1 sub << page_style null ne { /S page_style } if page_label null ne { /P page_label } if /St logical_page >>
-        } forall
-        ]>> /PUT pdfmark
-    [{Catalog} <</PageLabels {pl}>> /PUT pdfmark
+	[/_objdef {pl} /type /dict /OBJ pdfmark
+	[{pl} <</Nums [
+		Numberings {
+			/params exch def
+			/physical_page params 0 get def
+			/logical_page params 1 get def
+			/page_style params 2 get def
+			/page_label params 3 get def
+			physical_page 1 sub << page_style null ne { /S page_style } if page_label null ne { /P page_label } if /St logical_page >>
+		} forall
+		]>> /PUT pdfmark
+	[{Catalog} <</PageLabels {pl}>> /PUT pdfmark
 } def
