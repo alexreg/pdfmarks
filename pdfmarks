@@ -61,7 +61,7 @@ output_file="$(mktemp "/tmp/$(basename "$input_file").XXXX")"
 
 numbering_tokens=""
 delim=','
-while IFS="$command_arg_separator" read -r -d "$delim" p1 p2 p3 p4 p5; do
+while IFS="$command_arg_separator" read -d "$delim" p1 p2 p3 p4 p5; do
 	physical_page="$p1"
 	logical_page="$p2"
 	page_style="null"
@@ -83,8 +83,6 @@ while IFS="$command_arg_separator" read -r -d "$delim" p1 p2 p3 p4 p5; do
 	fi
 	numbering_tokens+=" [ $physical_page $logical_page $page_style $page_label ]"
 done <<< "$numbering_command$delim"
-echo "${numbering_tokens[@]}" >&2
-# exit
 
 (( $verbosity )) && echo "Writing output to temporary file \`$output_file\`..."
 gs_args=""
