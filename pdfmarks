@@ -85,10 +85,20 @@ while IFS="$command_arg_separator" read -d "$delim" p1 p2 p3 p4 p5; do
 done <<< "$numbering_command$delim"
 
 (( $verbosity )) && echo "Writing output to temporary file \`$output_file\`..."
-gs_args=""
-gs $gs_args -dNOPAUSE -sDEVICE=pdfwrite -sOutputFile="$output_file" "$input_file" "pdfmarks.ps" << EOF
-/Numberings [$numbering_tokens] def
-do_renumbering
+(( $verbosity )) && echo "Writing output to temporary file \`$output_file\`..."
+gs \
+	-o "$output_file" \
+	-sDEVICE=pdfwrite -dNOPAUSE \
+	-dColorConversionStrategy=/LeaveColorUnchanged \
+	-dDownsampleMonoImages=false \
+	-dDownsampleGrayImages=false \
+	-dDownsampleColorImages=false \
+	# See <https://superuser.com/questions/360216/use-ghostscript-but-tell-it-to-not-reprocess-images>.
+	"${GS_EXTRA_ARGS[@]}" \
+	"$input_file" \
+	"pdfmarks.ps" <<- EOF
+	/Numberings [$numbering_tokens] def
+	do_renumbering
 EOF
 exit_code=$?; echo; (( $exit_code == 0 )) || exit $exit_code
 
